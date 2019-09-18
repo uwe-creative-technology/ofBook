@@ -5,7 +5,7 @@ Graphics
 
 This chapter builds off of the *C++ Basics* and *Setup and Project Structure* chapters, so if you aren't familiar with basic C++ and creating openFrameworks projects, check out those chapters first.
 
-In sections 1 and 2, we will create "paintbrushes" where the mouse is our brush and our code defines how our brush makes marks on the screen. In section 3, we will explore something called "coordinate system transformations" to create hypnotizing, spiraling rectangles. Source code for the projects is linked at the end of each section. If you feel lost at any point, don't hesitate to look at the completed code! You can check out the whole collection of code [here](https://github.com/openframeworks/ofBook/tree/master/chapters/intro_to_graphics/code) - both for standard development structure (Xcode, Code::Blocks, etc.) and for ofSketch.
+In sections 1 and 2, we will create "paintbrushes" where the mouse is our brush and our code defines how our brush makes marks on the screen. In section 3, we will explore something called "coordinate system transformations" to create hypnotizing, spiraling rectangles. Source code for the projects is linked at the end of each section. If you feel lost at any point, don't hesitate to look at the completed code! You can check out the whole collection of code [here](https://github.com/openframeworks/ofBook/tree/master/chapters/intro_to_graphics/code) - both for standard development structure (Xcode, QtCreator, Visual Studio, etc.) and for ofSketch.
 
 If you are following along using ofSketch, great! There are a couple things to note. Coding in ofSketch is a bit different than coding in other Xcode, Code::Blocks, etc. 1) There will be a few points where variables are added to something called a header file (`.h`). When you see those instructions, that means you should put your variables above your `setup()` function in ofSketch. 2) You'll want to use `ofSetWindowShape(int width, int height)` in `setup()` to control the size of your application. 3) Some of the applications you write will save images to your computer. You can find them in your ofSketch folder, by looking for `ofSketch/data/Projects/YOUR_PROJECT_NAME/bin/data/`.
 
@@ -514,11 +514,11 @@ Let's add points to our polyline in `update()`:
 
 ```cpp
 if (leftMouseButtonPressed) {
-    ofVec2f mousePos(ofGetMouseX(), ofGetMouseY());
+    ofPoint mousePos(ofGetMouseX(), ofGetMouseY());
     if (lastPoint.distance(mousePos) >= minDistance) {
         // a.distance(b) calculates the Euclidean distance between point a and b.  It's
         // the length of the straight line distance between the points.
-        currentPolyline.curveTo(mousePos);  // Here we are using an ofVec2f with curveTo(...)
+        currentPolyline.curveTo(mousePos);
         lastPoint = mousePos;
     }
 }
@@ -561,14 +561,16 @@ And we have a simple pen-like brush that tracks the mouse, and we can draw a dop
 Since we have the basic drawing in place, now we play with how we are rendering our polylines. We will draw points, normals and tangents. We'll talk about what normals and tangents are in a little bit. First, let's draw points (circles) at the vertices in our polylines. Inside the `for` loop in `draw()` (after `polyline.draw()`), add this:
 
 ```cpp
-vector<ofVec3f> vertices = polyline.getVertices();
+vector<glm::vec3> vertices = polyline.getVertices();
 for (int vertexIndex=0; vertexIndex<vertices.size(); vertexIndex++) {
-    ofVec3f vertex = vertices[vertexIndex];  // ofVec3f is like ofVec2f, but with a third dimension, z
+    glm::vec3 vertex = vertices[vertexIndex];  // glm::vec3 is like ofVec2f, but with a third dimension, z
     ofDrawCircle(vertex, 5);
 }
 ```
 
-[`getVertices()`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getVertices) returns a `vector` of `ofVec3f` objects that represent the vertices of our polyline. This is basically what an `ofPolyline` is - an ordered set of `ofVec3f` objects (with some extra math). We can loop through the indices of the vector to pull out the individual vertex locations, and use them to draw circles.
+[`getVertices()`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getVertices) returns a `vector` of `glm::vec3` objects that represent the vertices of our polyline. This is basically what an `ofPolyline` is - an ordered set of `glm::vec3` objects (with some extra math). We can loop through the indices of the vector to pull out the individual vertex locations, and use them to draw circles.
+
+Note: in recent versions, openFrameworks has shifted away from `ofVec3f` to using a new internal math library, GLM. Read more about that [here](https://openframeworks.cc/learning/02_graphics/how_to_use_glm/). This chapter was written before that shift and still uses the legacy `ofVec3f` and `ofVec2f` in places. Some of the method names have changed in this shift, but in most places where you see `ofVec3f` or `ofVec2f`, you can instead use `glm::vec3` or `glm::vec2`. `getVertices()` is one of the places where you must use the new syntax by default.
 
 What happens when we run it? Our white lines look thicker. That's because our polyline is jam-packed with vertices! Every time we call the `curveTo(...)` method, we create 20 extra vertices (by default). These help make a smooth-looking curve. We can adjust how many vertices are added with an optional parameter, `curveResolution`, in `curveTo(...)`. We don't need that many vertices, but instead of lowering the `curveResolution`, we can make use of [`simplify(...)`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_simplify)\.
 
@@ -588,16 +590,16 @@ We can also sample points along the polyline using [`getPointAtPercent(...)`](ht
 Now we have evenly spaced points (figure 13, right). (Note that there is no circle drawn at the end of the line.) Let's try creating a brush stroke where the thickness of the line changes. To do this we need to use a [normal vector](https://en.wikipedia.org/w/index.php?title=Normal_vector). Figure 14 shows normals drawn over some polylines - they point in the opposite (perpendicular) direction to the polyline. Imagine drawing a normal at every point along a polyline, like figure 15. That is one way to add "thickness" to our brush. We can comment out our circle drawing code in `draw()`, and add these lines of code instead:
 
 ```cpp
-    vector<ofVec3f> vertices = polyline.getVertices();
+    vector<glm::vec3> vertices = polyline.getVertices();
     float normalLength = 50;
     for (int vertexIndex=0; vertexIndex<vertices.size(); vertexIndex++) {
-        ofVec3f vertex = vertices[vertexIndex];  // Get the vertex
-        ofVec3f normal = polyline.getNormalAtIndex(vertexIndex) * normalLength;  // Scale the normal
+        glm::vec3 vertex = vertices[vertexIndex];  // Get the vertex
+        glm::vec3 normal = polyline.getNormalAtIndex(vertexIndex) * normalLength;  // Scale the normal
         ofDrawLine(vertex-normal/2, vertex+normal/2);  // Center the scaled normal around the vertex
     }
 ```
 
-We are getting all of the vertices in our `ofPolyline`. But here, we are also using [`getNormalAtIndex`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getNormalAtIndex) which takes an index and returns an `ofVec3f` that represents the normal vector for the vertex at that index. We take that normal, scale it and then display it centered around the vertex. So, we have something like figure 14 (left), but we can also sample normals, using the function [`getNormalAtIndexInterpolated(...)`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getNormalAtIndexInterpolated). So let's comment out the code we just wrote, and try sampling our normals evenly along the polyline:
+We are getting all of the vertices in our `ofPolyline`. But here, we are also using [`getNormalAtIndex`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getNormalAtIndex) which takes an index and returns an `glm::vec3` that represents the normal vector for the vertex at that index. We take that normal, scale it and then display it centered around the vertex. So, we have something like figure 14 (left), but we can also sample normals, using the function [`getNormalAtIndexInterpolated(...)`](http://openframeworks.cc/documentation/graphics/ofPolyline.html#show_getNormalAtIndexInterpolated). So let's comment out the code we just wrote, and try sampling our normals evenly along the polyline:
 
 ![Figure 14: Drawing normals at the vertices of a polyline, without and with resampling points evenly](images/Figure14_PolylineNormals.png)
 
@@ -620,11 +622,11 @@ Now we can pump up the number of normals in our drawing. Let's change our loop i
 We've just added some thickness to our polylines. Now let's have a quick aside about tangents, the "opposite" of normals. These wonderful things are perpendicular to the normals that we just drew. So if we drew tangents along a perfectly straight line we wouldn't really see anything. The fun part comes when we draw tangents on a curved line, so let's see what that looks like. Same drill as before. Comment out the last code and add in the following:
 
 ```cpp
-vector<ofVec3f> vertices = polyline.getVertices();
+vector<glm::vec3> vertices = polyline.getVertices();
 float tangentLength = 80;
 for (int vertexIndex=0; vertexIndex<vertices.size(); vertexIndex++) {
-    ofVec3f vertex = vertices[vertexIndex];
-    ofVec3f tangent = polyline.getTangentAtIndex(vertexIndex) * tangentLength;
+    glm::vec3 vertex = vertices[vertexIndex];
+    glm::vec3 tangent = polyline.getTangentAtIndex(vertexIndex) * tangentLength;
     ofDrawLine(vertex-tangent/2, vertex+tangent/2);
 }
 ```
